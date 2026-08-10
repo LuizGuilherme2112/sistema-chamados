@@ -1,0 +1,93 @@
+# Central de Chamados
+
+Sistema de abertura de chamados de TI. Funcionários abrem chamados; a TI gerencia
+prioridade, categoria, status e responsável.
+
+## Passo a passo para colocar no ar
+
+### 1. Criar o banco de dados (Supabase — gratuito)
+
+1. Acesse https://supabase.com e crie uma conta gratuita.
+2. Clique em "New project", dê um nome (ex: `central-chamados`) e escolha uma senha
+   para o banco (guarde-a, mas não vai precisar dela no dia a dia).
+3. Aguarde o projeto ser criado (1-2 minutos).
+4. No menu lateral, vá em **SQL Editor** → **New query**.
+5. Abra o arquivo `supabase-setup.sql` (nesta pasta), copie todo o conteúdo, cole no
+   editor e clique em **Run**. Isso cria a tabela de chamados.
+6. Vá em **Project Settings** → **API**. Copie:
+   - **Project URL** (algo como `https://xxxxx.supabase.co`)
+   - **anon public key** (uma chave longa)
+
+### 2. Configurar o projeto
+
+1. Extraia o arquivo .zip em uma pasta no seu computador.
+2. Renomeie `.env.example` para `.env`.
+3. Abra o `.env` e cole os valores que você copiou do Supabase:
+   ```
+   VITE_SUPABASE_URL=https://xxxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=sua-chave-aqui
+   ```
+
+### 3. Testar localmente (opcional, mas recomendado)
+
+Requer [Node.js](https://nodejs.org) instalado (versão 18 ou superior).
+
+```bash
+npm install
+npm run dev
+```
+
+Abra o endereço que aparecer no terminal (geralmente `http://localhost:5173`) e
+teste o sistema.
+
+### 4. Publicar o site (Vercel — gratuito)
+
+1. Crie uma conta em https://vercel.com (pode entrar com GitHub, GitLab ou e-mail).
+2. Suba esta pasta para um repositório no GitHub (ou GitLab/Bitbucket):
+   - Se não souber usar Git, o próprio site do Vercel tem uma opção de arrastar a
+     pasta ("Deploy" → "Upload"), mas o ideal é usar um repositório para facilitar
+     atualizações futuras.
+3. No Vercel, clique em **Add New → Project**, selecione o repositório.
+4. Em **Environment Variables**, adicione as duas mesmas variáveis do `.env`:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+5. Clique em **Deploy**. Em cerca de 1 minuto, o Vercel te dá uma URL pública
+   (ex: `central-chamados.vercel.app`) — esse é o link que você compartilha com os
+   funcionários.
+
+### 5. Uso no dia a dia
+
+- Cada pessoa que acessar o link escolhe um nome e se é "Funcionário" ou "TI"
+  (fica salvo só no navegador dela).
+- Não existe senha/login corporativo nesta versão — é um controle por confiança,
+  adequado para uso interno inicial. Se depois quiser adicionar login de verdade,
+  dá para evoluir com Supabase Auth.
+
+## Estrutura do projeto
+
+```
+central-de-chamados/
+├── src/
+│   ├── App.jsx           → interface completa (funcionário + TI)
+│   ├── main.jsx          → ponto de entrada do React
+│   ├── supabaseClient.js → conexão com o banco
+│   ├── ticketsApi.js     → funções de ler/criar/atualizar chamados
+│   └── index.css
+├── supabase-setup.sql    → script para criar a tabela no Supabase
+├── .env.example          → modelo do arquivo de variáveis (renomeie para .env)
+└── package.json
+```
+
+## Dúvidas comuns
+
+**"Configure VITE_SUPABASE_URL..." aparece no console**
+→ O arquivo `.env` não foi criado ou está com valores errados. Confira o passo 2.
+
+**Quero mudar cores, campos ou textos**
+→ Edite `src/App.jsx`. As cores estão centralizadas no objeto `COLORS` no topo do
+arquivo.
+
+**Quero adicionar notificação por e-mail**
+→ É possível usar o recurso de "Edge Functions" do Supabase combinado com um
+serviço de e-mail (ex: Resend). Não incluído nesta primeira versão — me chame se
+quiser evoluir isso.
