@@ -40,20 +40,7 @@ npm run dev
 Abra o endereço que aparecer no terminal (geralmente `http://localhost:5173`) e
 teste o sistema.
 
-### 4. Publicar o site (Vercel — gratuito)
 
-1. Crie uma conta em https://vercel.com (pode entrar com GitHub, GitLab ou e-mail).
-2. Suba esta pasta para um repositório no GitHub (ou GitLab/Bitbucket):
-   - Se não souber usar Git, o próprio site do Vercel tem uma opção de arrastar a
-     pasta ("Deploy" → "Upload"), mas o ideal é usar um repositório para facilitar
-     atualizações futuras.
-3. No Vercel, clique em **Add New → Project**, selecione o repositório.
-4. Em **Environment Variables**, adicione as duas mesmas variáveis do `.env`:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-5. Clique em **Deploy**. Em cerca de 1 minuto, o Vercel te dá uma URL pública
-   (ex: `central-chamados.vercel.app`) — esse é o link que você compartilha com os
-   funcionários.
 
 ### 5. Uso no dia a dia
 
@@ -87,7 +74,4 @@ central-de-chamados/
 → Edite `src/App.jsx`. As cores estão centralizadas no objeto `COLORS` no topo do
 arquivo.
 
-**Quero adicionar notificação por e-mail**
-→ É possível usar o recurso de "Edge Functions" do Supabase combinado com um
-serviço de e-mail (ex: Resend). Não incluído nesta primeira versão — me chame se
-quiser evoluir isso.
+
