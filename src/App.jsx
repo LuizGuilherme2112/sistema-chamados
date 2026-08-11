@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Plus, MessageSquare, X, Wrench, Wifi, KeyRound, HelpCircle, AppWindow,
-  RefreshCw, Filter, Clock, UserCircle2, Send, ChevronDown, LogOut, Lock
+  RefreshCw, Filter, Clock, UserCircle2, Send, ChevronDown, LogOut, Lock, Paperclip, Image
 } from "lucide-react";
-import { loadTickets, createTicket, updateTicket, addComment } from "./ticketsApi";
+import { loadTickets, createTicket, updateTicket, addComment, uploadTicketAttachment, getTicketAttachmentUrl } from "./ticketsApi";
 import { signIn, signOut, getProfile, getSession, onAuthStateChange, createUserByAdmin, loadUsers, updateUserRole } from "./authApi";
 import { supabase } from "./supabaseClient";
 
@@ -159,6 +159,20 @@ function Select({ value, onChange, options, style }) {
 
 function TicketDetail({ ticket, isIT, tiUsers, onClose, onUpdate, onComment }) {
   const [commentText, setCommentText] = useState("");
+  const [openingAttachment, setOpeningAttachment] = useState(null);
+
+  const openAttachment = async (attachment) => {
+    try {
+      setOpeningAttachment(attachment.id);
+      const url = await getTicketAttachmentUrl(attachment.file_path);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      console.error(e);
+      alert("Não foi possível abrir o anexo.");
+    } finally {
+      setOpeningAttachment(null);
+    }
+  };
 
   return (
     <div style={{
@@ -199,6 +213,29 @@ function TicketDetail({ ticket, isIT, tiUsers, onClose, onUpdate, onComment }) {
         <div style={{ padding: "0 22px 16px", fontSize: 12, color: COLORS.inkMuted }}>
           Aberto por <strong style={{ color: COLORS.ink }}>{ticket.requester}</strong> em {fmtDate(ticket.created_at)}
         </div>
+
+        {ticket.attachments?.length > 0 && (
+          <div style={{ padding: "0 22px 16px" }}>
+            <div style={{ fontSize: 11, color: COLORS.inkMuted, marginBottom: 7, fontWeight: 700 }}>ANEXO</div>
+            {ticket.attachments.map((attachment) => (
+              <button
+                key={attachment.id}
+                onClick={() => openAttachment(attachment)}
+                disabled={openingAttachment === attachment.id}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`,
+                  background: COLORS.surfaceAlt, color: COLORS.tealDark, fontSize: 13,
+                  fontWeight: 600, cursor: openingAttachment === attachment.id ? "default" : "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <Image size={16} />
+                {openingAttachment === attachment.id ? "Abrindo..." : attachment.file_name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {isIT && (
           <div style={{ padding: "14px 22px", borderTop: `1px solid ${COLORS.border}`, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -505,14 +542,23 @@ function NewTicketForm({ onCreate }) {
   const [priority, setPriority] = useState("Média");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentError, setAttachmentError] = useState(null);
 
   const submit = async () => {
     if (!title.trim() || !description.trim() || submitting) return;
     setSubmitting(true);
-    await onCreate({ title: title.trim(), description: description.trim(), category, priority });
-    setSubmitting(false);
-    setTitle(""); setDescription(""); setCategory("Hardware"); setPriority("Média");
-    setOpen(false);
+    setAttachmentError(null);
+    try {
+      await onCreate({ title: title.trim(), description: description.trim(), category, priority, attachment });
+      setTitle(""); setDescription(""); setCategory("Hardware"); setPriority("Média");
+      setAttachment(null);
+      setOpen(false);
+    } catch (e) {
+      setAttachmentError(e.message || "Não foi possível enviar o chamado.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!open) {
@@ -560,6 +606,54 @@ function NewTicketForm({ onCreate }) {
           <div style={{ fontSize: 11, color: COLORS.inkMuted, marginBottom: 4, fontWeight: 600 }}>PRIORIDADE</div>
           <Select value={priority} onChange={setPriority} options={PRIORITIES} />
         </div>
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, color: COLORS.inkMuted, marginBottom: 6, fontWeight: 600 }}>
+          ANEXO OPCIONAL — PNG, ATÉ 5 MB
+        </div>
+        <label style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+          padding: "10px 12px", borderRadius: 8,
+          border: `1.5px dashed ${attachmentError ? COLORS.danger : COLORS.border}`,
+          background: COLORS.surfaceAlt, color: COLORS.tealDark,
+          fontSize: 13, fontWeight: 600, cursor: "pointer",
+        }}>
+          <Paperclip size={15} />
+          {attachment ? attachment.name : "Selecionar print"}
+          <input
+            type="file"
+            accept="image/png"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null;
+              setAttachmentError(null);
+              if (!file) return setAttachment(null);
+              if (file.type !== "image/png") {
+                setAttachment(null);
+                setAttachmentError("Selecione uma imagem PNG.");
+                e.target.value = "";
+                return;
+              }
+              if (file.size > 5 * 1024 * 1024) {
+                setAttachment(null);
+                setAttachmentError("O print deve ter no máximo 5 MB.");
+                e.target.value = "";
+                return;
+              }
+              setAttachment(file);
+            }}
+          />
+        </label>
+        {attachment && (
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11.5, color: COLORS.inkMuted }}>
+            <span>{(attachment.size / 1024 / 1024).toFixed(2)} MB</span>
+            <button type="button" onClick={() => setAttachment(null)}
+              style={{ border: "none", background: "none", color: COLORS.danger, cursor: "pointer", fontSize: 11.5 }}>
+              Remover
+            </button>
+          </div>
+        )}
+        {attachmentError && <div style={{ marginTop: 6, fontSize: 11.5, color: COLORS.danger }}>{attachmentError}</div>}
       </div>
       <button
         onClick={submit}
@@ -693,15 +787,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    console.log("Entrou no useEffect Realtime", {
-      session,
-      profile,
-    });
-
-    if (!session || profile?.role !== "TI") {
-      console.log("Realtime não iniciado porque sessão/perfil TI ainda não estão prontos.");
-      return;
-    }
+    if (!session || profile?.role !== "TI") return;
 
     realtimeReadyRef.current = false;
 
@@ -711,12 +797,7 @@ export default function App() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tickets" },
         (payload) => {
-          console.log("Novo chamado recebido via Realtime:", payload);
-
-          if (!realtimeReadyRef.current) {
-            console.log("Evento recebido antes da assinatura ficar pronta.");
-            return;
-          }
+          if (!realtimeReadyRef.current) return;
 
           const ticket = payload.new;
           refreshTickets(false);
@@ -735,15 +816,12 @@ export default function App() {
         }
       )
       .subscribe((status, err) => {
-        console.log("Realtime status:", status);
-
         if (err) {
           console.error("Realtime erro:", err);
         }
 
         if (status === "SUBSCRIBED") {
           realtimeReadyRef.current = true;
-          console.log("Realtime conectado aos novos chamados.");
         }
       });
 
@@ -846,17 +924,34 @@ export default function App() {
   };
 
 const handleCreate = async (fields) => {
+  const { attachment, ...ticketFields } = fields;
+
   try {
     const newTicket = await createTicket({
-      ...fields,
+      ...ticketFields,
       requester: profile.name,
       requester_id: session.user.id,
     });
 
-    setTickets((prev) => [newTicket, ...prev]);
+    let attachments = [];
+
+    if (attachment) {
+      const uploaded = await uploadTicketAttachment(newTicket.id, session.user.id, attachment);
+      attachments = [{
+        id: uploaded.id,
+        file_name: uploaded.file_name,
+        file_path: uploaded.file_path,
+        uploaded_by: uploaded.uploaded_by,
+        uploaded_at: uploaded.uploaded_at,
+      }];
+    }
+
+    setTickets((prev) => [{ ...newTicket, attachments }, ...prev]);
+    setError(null);
   } catch (e) {
     console.error(e);
-    setError("Não foi possível salvar o chamado. Tente novamente.");
+    setError(e.message || "Não foi possível salvar o chamado. Tente novamente.");
+    throw e;
   }
 };
 
