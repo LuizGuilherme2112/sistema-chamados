@@ -33,13 +33,12 @@ const CATEGORIES = [
 const PRIORITIES = ["Baixa", "Média", "Alta", "Urgente"];
 const PRIORITY_COLOR = { Baixa: COLORS.gray, "Média": COLORS.teal, Alta: COLORS.amber, Urgente: COLORS.danger };
 
-const STATUSES = ["Aberto", "Em andamento", "Aguardando", "Resolvido", "Fechado"];
+const STATUSES = ["Aberto", "Em andamento", "Resolvido"];
+
 const STATUS_COLOR = {
   Aberto: COLORS.indigo,
   "Em andamento": COLORS.teal,
-  Aguardando: COLORS.amber,
   Resolvido: COLORS.success,
-  Fechado: COLORS.gray,
 };
 
 const REFRESH_INTERVAL_MS = 60000;
@@ -807,7 +806,7 @@ const handleCreate = async (fields) => {
 
   const isIT = profile.role === "TI";
   const myTickets = tickets.filter((t) => t.requester === profile.name);
-  const isHistoryTicket = (t) => t.status === "Resolvido" || t.status === "Fechado";
+  const isHistoryTicket = (t) => t.status === "Resolvido";
   const activeTickets = tickets.filter((t) => !isHistoryTicket(t));
   const historyTickets = tickets.filter(isHistoryTicket);
   const myActiveTickets = myTickets.filter((t) => !isHistoryTicket(t));
@@ -1065,8 +1064,8 @@ const handleCreate = async (fields) => {
 
             {ticketView === "ativos" ? (
               <>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUSES.length}, 1fr)`, gap: 10, marginBottom: 16 }}>
-              {STATUSES.map((s) => (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 16 }}>
+              {["Aberto", "Em andamento"].map((s) => (
                 <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "10px 12px" }}>
                   <div style={{ fontSize: 10.5, fontWeight: 700, color: STATUS_COLOR[s], marginBottom: 3 }}>{s.toUpperCase()}</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.ink }}>{counts[s]}</div>
@@ -1076,7 +1075,7 @@ const handleCreate = async (fields) => {
 
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
               <Filter size={14} color={COLORS.inkMuted} />
-              <Select value={statusFilter} onChange={setStatusFilter} options={["Todos", ...STATUSES]} style={{ width: 150 }} />
+              <Select value={statusFilter} onChange={setStatusFilter} options={["Todos", "Aberto", "Em andamento"]} style={{ width: 150 }} />
               <Select value={priorityFilter} onChange={setPriorityFilter} options={["Todas", ...PRIORITIES]} style={{ width: 130 }} />
             </div>
 
