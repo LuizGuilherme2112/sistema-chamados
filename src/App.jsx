@@ -246,37 +246,39 @@ function TicketDetail({ ticket, isIT, tiUsers, onClose, onUpdate, onComment }) {
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && commentText.trim()) {
-                  onComment(ticket, commentText.trim());
-                  setCommentText("");
-                }
-              }}
-              placeholder="Escrever um comentário..."
-              style={{
-                flex: 1, fontSize: 13, padding: "9px 12px", borderRadius: 8,
-                border: `1px solid ${COLORS.border}`, color: COLORS.ink,
-              }}
-            />
-            <button
-              onClick={() => {
-                if (commentText.trim()) {
-                  onComment(ticket, commentText.trim());
-                  setCommentText("");
-                }
-              }}
-              style={{
-                background: COLORS.teal, border: "none", borderRadius: 8, width: 38,
-                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff",
-              }}
-            >
-              <Send size={15} />
-            </button>
-          </div>
+          {isIT && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && commentText.trim()) {
+                    onComment(ticket, commentText.trim());
+                    setCommentText("");
+                  }
+                }}
+                placeholder="Escrever um comentário..."
+                style={{
+                  flex: 1, fontSize: 13, padding: "9px 12px", borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`, color: COLORS.ink,
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (commentText.trim()) {
+                    onComment(ticket, commentText.trim());
+                    setCommentText("");
+                  }
+                }}
+                style={{
+                  background: COLORS.teal, border: "none", borderRadius: 8, width: 38,
+                  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#fff",
+                }}
+              >
+                <Send size={15} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -583,6 +585,8 @@ export default function App() {
   const [selected, setSelected] = useState(null);
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [priorityFilter, setPriorityFilter] = useState("Todas");
+  const [ticketView, setTicketView] = useState("ativos");
+  const [historyAssigneeFilter, setHistoryAssigneeFilter] = useState("Todos");
   const [error, setError] = useState(null);
   const [showUserForm, setShowUserForm] = useState(false);
   const [users, setUsers] = useState([]);
@@ -803,10 +807,19 @@ const handleCreate = async (fields) => {
 
   const isIT = profile.role === "TI";
   const myTickets = tickets.filter((t) => t.requester === profile.name);
+  const isHistoryTicket = (t) => t.status === "Resolvido" || t.status === "Fechado";
+  const activeTickets = tickets.filter((t) => !isHistoryTicket(t));
+  const historyTickets = tickets.filter(isHistoryTicket);
+  const myActiveTickets = myTickets.filter((t) => !isHistoryTicket(t));
+  const myHistoryTickets = myTickets.filter(isHistoryTicket);
 
-  const filtered = tickets.filter((t) =>
+  const filtered = activeTickets.filter((t) =>
     (statusFilter === "Todos" || t.status === statusFilter) &&
     (priorityFilter === "Todas" || t.priority === priorityFilter)
+  );
+
+  const filteredHistory = historyTickets.filter((t) =>
+    historyAssigneeFilter === "Todos" || t.assignee === historyAssigneeFilter
   );
 
   const counts = STATUSES.reduce((acc, s) => ({ ...acc, [s]: tickets.filter((t) => t.status === s).length }), {});
@@ -862,15 +875,15 @@ const handleCreate = async (fields) => {
         {!isIT && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <NewTicketForm onCreate={handleCreate} />
-            {myTickets.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: COLORS.inkMuted, fontSize: 13.5 }}>
-                Você ainda não abriu nenhum chamado.
-              </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setTicketView("ativos")} style={{ padding: "9px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${ticketView === "ativos" ? COLORS.teal : COLORS.border}`, background: ticketView === "ativos" ? COLORS.teal + "12" : COLORS.surface, color: ticketView === "ativos" ? COLORS.tealDark : COLORS.inkMuted, fontWeight: 700, fontSize: 12.5 }}>Chamados ativos ({myActiveTickets.length})</button>
+              <button onClick={() => setTicketView("historico")} style={{ padding: "9px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${ticketView === "historico" ? COLORS.teal : COLORS.border}`, background: ticketView === "historico" ? COLORS.teal + "12" : COLORS.surface, color: ticketView === "historico" ? COLORS.tealDark : COLORS.inkMuted, fontWeight: 700, fontSize: 12.5 }}>Histórico ({myHistoryTickets.length})</button>
+            </div>
+            {(ticketView === "ativos" ? myActiveTickets : myHistoryTickets).length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 0", color: COLORS.inkMuted, fontSize: 13.5 }}>{ticketView === "ativos" ? "Você não possui chamados ativos." : "Você ainda não possui chamados no histórico."}</div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 14 }}>
-                {myTickets.map((t) => (
-                  <TicketStub key={t.id} ticket={t} onClick={() => setSelected(t)} />
-                ))}
+                {(ticketView === "ativos" ? myActiveTickets : myHistoryTickets).map((t) => (<TicketStub key={t.id} ticket={t} onClick={() => setSelected(t)} />))}
               </div>
             )}
           </div>
@@ -878,6 +891,10 @@ const handleCreate = async (fields) => {
 
         {isIT && (
           <div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+              <button onClick={() => setTicketView("ativos")} style={{ padding: "9px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${ticketView === "ativos" ? COLORS.teal : COLORS.border}`, background: ticketView === "ativos" ? COLORS.teal + "12" : COLORS.surface, color: ticketView === "ativos" ? COLORS.tealDark : COLORS.inkMuted, fontWeight: 700, fontSize: 12.5 }}>Chamados ativos ({activeTickets.length})</button>
+              <button onClick={() => setTicketView("historico")} style={{ padding: "9px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${ticketView === "historico" ? COLORS.teal : COLORS.border}`, background: ticketView === "historico" ? COLORS.teal + "12" : COLORS.surface, color: ticketView === "historico" ? COLORS.tealDark : COLORS.inkMuted, fontWeight: 700, fontSize: 12.5 }}>Histórico ({historyTickets.length})</button>
+            </div>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
               <button
                 onClick={() => setShowUserForm((v) => !v)}
@@ -1046,6 +1063,8 @@ const handleCreate = async (fields) => {
               </div>
             )}
 
+            {ticketView === "ativos" ? (
+              <>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUSES.length}, 1fr)`, gap: 10, marginBottom: 16 }}>
               {STATUSES.map((s) => (
                 <div key={s} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "10px 12px" }}>
@@ -1071,6 +1090,36 @@ const handleCreate = async (fields) => {
                   <TicketStub key={t.id} ticket={t} onClick={() => setSelected(t)} dense />
                 ))}
               </div>
+            )}
+
+              </>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+                  <Filter size={14} color={COLORS.inkMuted} />
+                  <Select value={historyAssigneeFilter} onChange={setHistoryAssigneeFilter} options={["Todos", ...tiUsers.map((user) => user.name)]} style={{ width: 190 }} />
+                </div>
+                {filteredHistory.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: COLORS.inkMuted, fontSize: 13.5 }}>Nenhum chamado encontrado no histórico.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {filteredHistory.map((t) => (
+                      <div key={t.id} onClick={() => setSelected(t)} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ minWidth: 220, flex: 1 }}>
+                          <div style={{ fontSize: 11, color: COLORS.inkMuted, fontFamily: "ui-monospace, monospace" }}>{ticketNumber(t.number)}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.ink, marginTop: 2 }}>{t.title}</div>
+                          <div style={{ fontSize: 12, color: COLORS.inkMuted, marginTop: 5 }}>Solicitante: <strong style={{ color: COLORS.ink }}>{t.requester}</strong>{" · "}Responsável: <strong style={{ color: COLORS.ink }}>{t.assignee || "Não atribuído"}</strong></div>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: COLORS.inkMuted, lineHeight: 1.6, textAlign: "right" }}>
+                          <div>Aberto: {fmtDate(t.created_at)}</div>
+                          <div>{t.resolved_at ? `Resolvido: ${fmtDate(t.resolved_at)}` : `Atualizado: ${fmtDate(t.updated_at)}`}</div>
+                        </div>
+                        <Badge color={STATUS_COLOR[t.status]} filled>{t.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
