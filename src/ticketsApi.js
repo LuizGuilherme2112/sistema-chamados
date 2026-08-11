@@ -62,12 +62,28 @@ export async function createTicket({
 }
 
 export async function updateTicket(id, changes) {
+  const updates = {
+    ...changes,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Quando o chamado for resolvido, grava a data/hora
+  if (changes.status === "Resolvido") {
+    updates.resolved_at = new Date().toISOString();
+  }
+
+  // Se um chamado resolvido for reaberto, remove a data de resolução
+  if (
+    changes.status &&
+    changes.status !== "Resolvido" &&
+    changes.status !== "Fechado"
+  ) {
+    updates.resolved_at = null;
+  }
+
   const { error } = await supabase
     .from("tickets")
-    .update({
-      ...changes,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id);
 
   if (error) throw error;

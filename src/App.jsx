@@ -333,7 +333,7 @@ function AuthScreen({ onAuthed }) {
     <div style={{ minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: COLORS.teal, marginBottom: 6 }}>
-          CENTRAL DE CHAMADOS
+          CENTRAL DE CHAMADOS - 18RI
         </div>
 
         <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink, marginBottom: 20 }}>
@@ -832,7 +832,7 @@ const handleCreate = async (fields) => {
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: COLORS.teal }}>CENTRAL DE CHAMADOS</div>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: COLORS.teal }}>CENTRAL DE CHAMADOS - 18RI</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: COLORS.ink, marginTop: 1 }}>
               {isIT ? "Painel da TI" : "Meus chamados"}
             </div>
