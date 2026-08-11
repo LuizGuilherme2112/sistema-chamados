@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { loadTickets, createTicket, updateTicket, addComment } from "./ticketsApi";
 import { signIn, signOut, getProfile, getSession, onAuthStateChange, createUserByAdmin, loadUsers, updateUserRole } from "./authApi";
+import { supabase } from "./supabaseClient";
 
 const COLORS = {
   bg: "#EEF1F4",
@@ -594,7 +595,12 @@ export default function App() {
   const [roleEdits, setRoleEdits] = useState({});
   const [savingRoleId, setSavingRoleId] = useState(null);
   const [tiUsers, setTiUsers] = useState([]);
+  const [notificationPermission, setNotificationPermission] = useState(() =>
+    "Notification" in window ? Notification.permission : "unsupported"
+  );
   const intervalRef = useRef(null);
+  const realtimeChannelRef = useRef(null);
+  const realtimeReadyRef = useRef(false);
 
   const refreshTickets = useCallback(async (showSpinner) => {
     if (showSpinner) setLoading(true);
@@ -660,8 +666,104 @@ export default function App() {
     };
   }, [loadProfileForSession]);
 
+  const handleEnableNotifications = async () => {
+    if (!("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      setError("Este navegador não suporta notificações.");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+
+      if (permission === "granted") {
+        setError(null);
+        new Notification("Central de Chamados - 18RI", {
+          body: "Notificações ativadas com sucesso.",
+          tag: "notifications-enabled",
+        });
+      } else if (permission === "denied") {
+        setError("As notificações foram bloqueadas no navegador.");
+      }
+    } catch (notificationError) {
+      console.error(notificationError);
+      setError("Não foi possível ativar as notificações.");
+    }
+  };
+
+  useEffect(() => {
+    console.log("Entrou no useEffect Realtime", {
+      session,
+      profile,
+    });
+
+    if (!session || profile?.role !== "TI") {
+      console.log("Realtime não iniciado porque sessão/perfil TI ainda não estão prontos.");
+      return;
+    }
+
+    realtimeReadyRef.current = false;
+
+    const channel = supabase
+      .channel(`ti-new-tickets-${session.user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "tickets" },
+        (payload) => {
+          console.log("Novo chamado recebido via Realtime:", payload);
+
+          if (!realtimeReadyRef.current) {
+            console.log("Evento recebido antes da assinatura ficar pronta.");
+            return;
+          }
+
+          const ticket = payload.new;
+          refreshTickets(false);
+
+          if ("Notification" in window && notificationPermission === "granted") {
+            const notification = new Notification("Central de Chamados - 18RI", {
+              body: `Novo chamado ${ticketNumber(ticket.number)}\n${ticket.requester || "Funcionário"}: ${ticket.title}`,
+              tag: `ticket-${ticket.id}`,
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        console.log("Realtime status:", status);
+
+        if (err) {
+          console.error("Realtime erro:", err);
+        }
+
+        if (status === "SUBSCRIBED") {
+          realtimeReadyRef.current = true;
+          console.log("Realtime conectado aos novos chamados.");
+        }
+      });
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      realtimeReadyRef.current = false;
+      realtimeChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
+  }, [session, profile?.role, refreshTickets, notificationPermission]);
+
   const handleSignOut = async () => {
     clearInterval(intervalRef.current);
+
+    if (realtimeChannelRef.current) {
+      await supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
     await signOut();
   };
 
@@ -895,6 +997,32 @@ const handleCreate = async (fields) => {
               <button onClick={() => setTicketView("historico")} style={{ padding: "9px 13px", borderRadius: 8, cursor: "pointer", border: `1px solid ${ticketView === "historico" ? COLORS.teal : COLORS.border}`, background: ticketView === "historico" ? COLORS.teal + "12" : COLORS.surface, color: ticketView === "historico" ? COLORS.tealDark : COLORS.inkMuted, fontWeight: 700, fontSize: 12.5 }}>Histórico ({historyTickets.length})</button>
             </div>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+              <button
+                onClick={handleEnableNotifications}
+                disabled={notificationPermission === "granted" || notificationPermission === "unsupported"}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: `1px solid ${notificationPermission === "granted" ? COLORS.success : COLORS.border}`,
+                  background: notificationPermission === "granted" ? COLORS.success + "12" : COLORS.surface,
+                  color: notificationPermission === "granted" ? COLORS.success : COLORS.ink,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor:
+                    notificationPermission === "granted" || notificationPermission === "unsupported"
+                      ? "default"
+                      : "pointer",
+                }}
+              >
+                {notificationPermission === "granted"
+                  ? "🔔 Notificações ativadas"
+                  : notificationPermission === "denied"
+                  ? "🔕 Notificações bloqueadas"
+                  : notificationPermission === "unsupported"
+                  ? "Notificações indisponíveis"
+                  : "🔔 Ativar notificações"}
+              </button>
+
               <button
                 onClick={() => setShowUserForm((v) => !v)}
                 style={{
