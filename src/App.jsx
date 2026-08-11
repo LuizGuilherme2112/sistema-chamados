@@ -1347,6 +1347,21 @@ const handleCreate = async (fields) => {
         )}
       </div>
 
+            <div
+        style={{
+          textAlign: "center",
+          marginTop: 40,
+          paddingBottom: 8,
+          fontSize: 10,
+          color: COLORS.inkMuted,
+          opacity: 0.55,
+          letterSpacing: 0.3,
+          userSelect: "none",
+        }}
+      >
+        Desenvolvido por Luiz Guilherme de Lira
+      </div>
+
       {selected && (
         <TicketDetail
           ticket={selected}
