@@ -42,7 +42,7 @@ const STATUS_COLOR = {
   Fechado: COLORS.gray,
 };
 
-const REFRESH_INTERVAL_MS = 20000;
+const REFRESH_INTERVAL_MS = 60000;
 
 function fmtDate(iso) {
   const d = new Date(iso);
